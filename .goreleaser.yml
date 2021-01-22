@@ -1,5 +1,4 @@
-# This is an example .goreleaser.yml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
+project_name: outstanding-prs
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -13,6 +12,16 @@ builds:
       - linux
       - windows
       - darwin
+    goarch:
+      - amd64
+dockers:
+  - goos: linux
+    goarch: amd64
+    image_templates:
+      - "cuotos/{{ .ProjectName }}:{{ .Tag }}"
+      - "cuotos/{{ .ProjectName }}:v{{ .Major }}"
+      - "cuotos/{{ .ProjectName }}:v{{ .Major }}.{{ .Minor }}"
+      - "cuotos/{{ .ProjectName }}:latest"
 archives:
   - replacements:
       darwin: Darwin
