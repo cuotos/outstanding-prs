@@ -1,5 +1,5 @@
 # outstanding-prs
-CLI to list outstanding PRs raised by members of a team
+CLI to list outstanding PRs that are waiting for reviews raised by members of a team
 
 ## Install 
 
