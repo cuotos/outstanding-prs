@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -11,6 +12,11 @@ import (
 	"github.com/google/go-github/v33/github"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2"
+)
+
+var (
+	version = ""
+	commit  = ""
 )
 
 type config struct {
@@ -26,6 +32,13 @@ func main() {
 }
 
 func run() error {
+
+	v := flag.Bool("v", false, "prints version")
+	flag.Parse()
+	if *v {
+		fmt.Printf("%s-%s", version, commit)
+		os.Exit(0)
+	}
 
 	conf := config{}
 	err := envconfig.Process("PRS", &conf)
