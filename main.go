@@ -19,31 +19,93 @@ type config struct {
 	GithubTeam string `split_words:"true" required:"true"`
 }
 
+func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func run() error {
 
-	c := config{}
-	err := envconfig.Process("PRS", &c)
+	conf := config{}
+	err := envconfig.Process("PRS", &conf)
 	if err != nil {
 		return err
 	}
 
-	client := getGithubClient(c.GithubPat)
+	client := getGithubClient(conf.GithubPat)
 
-	members, _, err := client.Teams.ListTeamMembersBySlug(context.Background(), c.GithubOrg, c.GithubTeam, nil)
-
+	members, err := getOrgTeamMembers(client, conf.GithubOrg, conf.GithubTeam)
 	if err != nil {
 		return err
 	}
 
-	// PRs _are_ "issues" in the world of Github
-	issues, _, err := client.Search.Issues(context.Background(), generateQueryString(members), &github.SearchOptions{Sort: "created-desc"})
+	prs, err := getPullRequests(client, conf.GithubOrg, members)
 	if err != nil {
 		return err
 	}
 
-	printOutput(issues.Issues, c.GithubOrg, c.GithubTeam)
+	printOutput(prs, conf.GithubOrg, conf.GithubTeam)
 
 	return nil
+}
+
+func getPullRequests(client *github.Client, org string, users []*github.User) ([]*github.Issue, error) {
+	// PRs are "issues" in the world of Github
+	var allIssues []*github.Issue
+
+	queryString := generateQueryString(org, users)
+
+	opt := &github.SearchOptions{
+		Sort: "created-desc",
+		ListOptions: github.ListOptions{
+			PerPage: 20,
+		},
+	}
+
+	for {
+		issues, resp, err := client.Search.Issues(context.Background(), queryString, opt)
+		if err != nil {
+			return nil, err
+		}
+
+		allIssues = append(allIssues, issues.Issues...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opt.Page = resp.NextPage
+	}
+
+	return allIssues, nil
+}
+
+func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User, error) {
+	var allMembers []*github.User
+
+	opts := &github.TeamListTeamMembersOptions{
+		ListOptions: github.ListOptions{
+			PerPage: 10,
+		},
+	}
+
+	for {
+		members, resp, err := client.Teams.ListTeamMembersBySlug(context.Background(), org, team, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		allMembers = append(allMembers, members...)
+
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opts.Page = resp.NextPage
+	}
+
+	return allMembers, nil
 }
 
 func printOutput(prs []*github.Issue, org, team string) error {
@@ -58,22 +120,23 @@ func printOutput(prs []*github.Issue, org, team string) error {
 	for _, i := range prs {
 
 		formattedIssue := fmt.Sprintf("%s\t%s\t%s\t%s\t\n", i.GetCreatedAt().Format("2006-01-02"), i.GetTitle(), i.GetUser().GetLogin(), i.GetHTMLURL())
+
 		writer.Write([]byte(formattedIssue))
 	}
 
 	return writer.Flush()
 }
 
-func generateQueryString(members []*github.User) string {
-	usersQueryString := strings.Builder{}
+func generateQueryString(org string, members []*github.User) string {
+	queryBuilder := strings.Builder{}
+
+	queryBuilder.WriteString(fmt.Sprintf("org:%s is:open review:required", org))
 
 	for _, m := range members {
-		usersQueryString.WriteString(fmt.Sprintf("author:%s ", m.GetLogin()))
+		queryBuilder.WriteString(fmt.Sprintf(" author:%s", m.GetLogin()))
 	}
 
-	queryString := fmt.Sprintf("org:JSainsburyPLC is:open review:required %s", usersQueryString.String())
-
-	return queryString
+	return queryBuilder.String()
 }
 
 func getGithubClient(accessToken string) *github.Client {
@@ -86,10 +149,4 @@ func getGithubClient(accessToken string) *github.Client {
 	client := github.NewClient(tc)
 
 	return client
-}
-
-func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
-	}
 }
