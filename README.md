@@ -26,3 +26,9 @@ export PRS_GITHUB_TEAM=<github team>
 
 $ outstanding-prs
 ```
+
+## Building and Releasing
+
+Project uses __Go Releaser__
+
+After tagging the latest commit with a semver tag, `goreleaser release` is all that is required to build and upload the binaries to __Github__ and __Docker hub__.
