@@ -20,7 +20,7 @@ var (
 )
 
 type config struct {
-	GithubPat  string `split_words:"true" required:"true"`
+	GithubPat  string `split_words:"true" required:"true" envconfig:"GITHUB_TOKEN"`
 	GithubOrg  string `split_words:"true" required:"true"`
 	GithubTeam string `split_words:"true" required:"true"`
 }
@@ -123,7 +123,7 @@ func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User,
 
 func printOutput(prs []*github.Issue, org, team string) error {
 
-	fmt.Printf("Open PRs for %s/%s team\n", org, team)
+	fmt.Printf("Open PRs for %s/%s team that are blocked waiting for reviews.\n\n", org, team)
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
