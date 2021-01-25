@@ -9,7 +9,7 @@ CLI to list outstanding PRs that are waiting for reviews raised by members of a 
 ### Docker
 see https://hub.docker.com/r/cuotos/outstanding-prs
 
-`docker run --rm -ti -e PRS_GITHUB_PAT=<Personal Access Token> -e PRS_GITHUB_ORG=<org name> -e PRS_GITHUB_TEAM=<team name> cuotos/outstanding-prs`
+`docker run --rm -ti -e GITHUB_TOKEN=<Personal Access Token> -e PRS_GITHUB_ORG=<org name> -e PRS_GITHUB_TEAM=<team name> cuotos/outstanding-prs`
 
 ### Binaries
 
