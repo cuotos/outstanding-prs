@@ -14,8 +14,13 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const (
-	prFilterString = "org:%s is:open review:required draft:false"
+var (
+	// Set default filters, like "review:required"
+	defaultFilters = []filterOpt{
+		withIsNotDraft(),
+		withIsOpen(),
+		withReviewRequired(),
+	}
 )
 
 var (
@@ -57,7 +62,14 @@ func run() error {
 		return err
 	}
 
-	prs, err := getPullRequests(client, conf.GithubOrg, members)
+	queryString, err := generateQueryString(conf.GithubOrg, members)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Looking for PRs with the following query:\n%s\n\n", queryString)
+
+	prs, err := getPullRequests(client, queryString)
 	if err != nil {
 		return err
 	}
@@ -67,11 +79,9 @@ func run() error {
 	return nil
 }
 
-func getPullRequests(client *github.Client, org string, users []*github.User) ([]*github.Issue, error) {
+func getPullRequests(client *github.Client, queryString string) ([]*github.Issue, error) {
 	// PRs are "issues" in the world of Github
 	var allIssues []*github.Issue
-
-	queryString := generateQueryString(org, users)
 
 	opt := &github.SearchOptions{
 		Sort: "created-desc",
@@ -127,8 +137,6 @@ func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User,
 
 func printOutput(prs []*github.Issue, org, team string) error {
 
-	fmt.Printf("Open PRs for %s/%s team that are blocked waiting for reviews.\n\n", org, team)
-
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
 	// Add headers to the buffer
@@ -144,16 +152,23 @@ func printOutput(prs []*github.Issue, org, team string) error {
 	return writer.Flush()
 }
 
-func generateQueryString(org string, members []*github.User) string {
+func generateQueryString(org string, members []*github.User) (string, error) {
 	queryBuilder := strings.Builder{}
 
-	queryBuilder.WriteString(fmt.Sprintf(prFilterString, org))
+	var users []string
 
 	for _, m := range members {
-		queryBuilder.WriteString(fmt.Sprintf(" author:%s", m.GetLogin()))
+		users = append(users, m.GetLogin())
 	}
 
-	return queryBuilder.String()
+	filters := append(defaultFilters, withOrg(org), withAuthors(users...))
+	fs, err := getFilterString(filters...)
+	if err != nil {
+		return "", err
+	}
+	queryBuilder.WriteString(fs)
+
+	return queryBuilder.String(), nil
 }
 
 func getGithubClient(accessToken string) *github.Client {
