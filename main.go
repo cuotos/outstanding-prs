@@ -14,6 +14,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const (
+	prFilterString = "org:%s is:open review:required draft:false"
+)
+
 var (
 	version = ""
 	commit  = ""
@@ -143,7 +147,7 @@ func printOutput(prs []*github.Issue, org, team string) error {
 func generateQueryString(org string, members []*github.User) string {
 	queryBuilder := strings.Builder{}
 
-	queryBuilder.WriteString(fmt.Sprintf("org:%s is:open review:required", org))
+	queryBuilder.WriteString(fmt.Sprintf(prFilterString, org))
 
 	for _, m := range members {
 		queryBuilder.WriteString(fmt.Sprintf(" author:%s", m.GetLogin()))

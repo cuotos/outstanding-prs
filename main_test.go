@@ -16,17 +16,17 @@ func TestGenerateQueryString(t *testing.T) {
 		{
 			"TestOrg",
 			[]string{},
-			"org:TestOrg is:open review:required",
+			"org:TestOrg is:open review:required draft:false",
 		},
 		{
 			"SecondOrg",
 			[]string{"cuotos"},
-			"org:SecondOrg is:open review:required author:cuotos",
+			"org:SecondOrg is:open review:required draft:false author:cuotos",
 		},
 		{
 			"AnotherOrg",
 			[]string{"cuotos", "danyo"},
-			"org:AnotherOrg is:open review:required author:cuotos author:danyo",
+			"org:AnotherOrg is:open review:required draft:false author:cuotos author:danyo",
 		},
 	}
 
