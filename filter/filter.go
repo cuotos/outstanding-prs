@@ -1,4 +1,4 @@
-package main
+package filter
 
 import (
 	"fmt"
@@ -7,13 +7,9 @@ import (
 
 // TODO move these to a package
 
-type filterOpt func() (string, error)
+type FilterOpt func() (string, error)
 
-type filterString struct {
-	s string
-}
-
-func getFilterString(opts ...filterOpt) (string, error) {
+func GetFilterString(opts ...FilterOpt) (string, error) {
 	sb := strings.Builder{}
 
 	for _, opt := range opts {
@@ -28,7 +24,7 @@ func getFilterString(opts ...filterOpt) (string, error) {
 	return strings.TrimSpace(sb.String()), nil
 }
 
-func withAuthors(authors ...string) filterOpt {
+func WithAuthors(authors ...string) FilterOpt {
 	return func() (string, error) {
 		s := strings.Builder{}
 		for _, a := range authors {
@@ -42,7 +38,7 @@ func withAuthors(authors ...string) filterOpt {
 	}
 }
 
-func withOrg(org string) filterOpt {
+func WithOrg(org string) FilterOpt {
 	return func() (string, error) {
 		if org == "" {
 			return "", fmt.Errorf("org cannot be empty")
@@ -52,31 +48,31 @@ func withOrg(org string) filterOpt {
 	}
 }
 
-func withIsOpen() filterOpt {
+func WithIsOpen() FilterOpt {
 	return func() (string, error) {
 		return "is:open", nil
 	}
 }
 
-func withIsClosed() filterOpt {
+func WithIsClosed() FilterOpt {
 	return func() (string, error) {
 		return "is:closed", nil
 	}
 }
 
-func withReviewRequired() filterOpt {
+func WithReviewRequired() FilterOpt {
 	return func() (string, error) {
 		return "review:required", nil
 	}
 }
 
-func withIsDraft() filterOpt {
+func WithIsDraft() FilterOpt {
 	return func() (string, error) {
 		return "draft:true", nil
 	}
 }
 
-func withIsNotDraft() filterOpt {
+func WithIsNotDraft() FilterOpt {
 	return func() (string, error) {
 		return "draft:false", nil
 	}
