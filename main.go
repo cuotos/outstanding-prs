@@ -10,6 +10,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/cuotos/outstanding-prs/filter"
+	"github.com/cuotos/outstanding-prs/model"
+	"github.com/cuotos/outstanding-prs/output"
 	"github.com/google/go-github/v33/github"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2"
@@ -68,21 +70,22 @@ func run() error {
 		return err
 	}
 
-	fmt.Printf("Looking for PRs with the following query:\n%s\n\n", queryString)
-
 	prs, err := getPullRequests(client, queryString)
 	if err != nil {
 		return err
 	}
 
-	printOutput(prs, conf.GithubOrg, conf.GithubTeam)
+	//TODO: use flag to decide if output in JSON format or text
+
+	//printOutput(prs, queryString)
+	_ = output.PrintOutput(os.Stdout, prs)
 
 	return nil
 }
 
-func getPullRequests(client *github.Client, queryString string) ([]*github.Issue, error) {
+func getPullRequests(client *github.Client, queryString string) ([]*model.PullRequest, error) {
 	// PRs are "issues" in the world of Github
-	var allIssues []*github.Issue
+	var allIssues []*model.PullRequest
 
 	opt := &github.SearchOptions{
 		Sort: "created-desc",
@@ -97,7 +100,17 @@ func getPullRequests(client *github.Client, queryString string) ([]*github.Issue
 			return nil, err
 		}
 
-		allIssues = append(allIssues, issues.Issues...)
+		for _, i := range issues.Issues {
+
+			pr := &model.PullRequest{
+				CreatedAt: i.GetCreatedAt(),
+				Title:     i.GetTitle(),
+				User:      i.User.GetLogin(),
+				HTMLURL:   i.GetHTMLURL(),
+			}
+
+			allIssues = append(allIssues, pr)
+		}
 
 		if resp.NextPage == 0 {
 			break
@@ -136,7 +149,9 @@ func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User,
 	return allMembers, nil
 }
 
-func printOutput(prs []*github.Issue, org, team string) error {
+func printOutput(prs []*model.PullRequest, queryString string) error {
+
+	fmt.Printf("Looking for PRs with the following query:\n%s\n\n", queryString)
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
@@ -145,7 +160,7 @@ func printOutput(prs []*github.Issue, org, team string) error {
 
 	for _, i := range prs {
 
-		formattedIssue := fmt.Sprintf("%s\t%s\t%s\t%s\t\n", i.GetCreatedAt().Format("2006-01-02"), i.GetTitle(), i.GetUser().GetLogin(), i.GetHTMLURL())
+		formattedIssue := fmt.Sprintf("%s\t%s\t%s\t%s\t\n", i.CreatedAt.Format("2006-01-02"), i.Title, i.User, i.HTMLURL)
 
 		writer.Write([]byte(formattedIssue))
 	}
