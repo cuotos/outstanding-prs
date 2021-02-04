@@ -1,4 +1,4 @@
-package main
+package filter
 
 import (
 	"testing"
@@ -9,21 +9,21 @@ import (
 
 func TestOptions(t *testing.T) {
 	tcs := []struct {
-		Input          filterOpt
+		Input          FilterOpt
 		ExpectedOutput string
 		// If not "", require and error was thrown with this message
 		ExpectError string
 	}{
-		{withAuthors("dan"), "author:dan", ""},
-		{withAuthors(""), "", "author cannot be empty"},
-		{withAuthors("dan", "rich"), "author:dan author:rich", ""},
-		{withOrg("DanOrg"), "org:DanOrg", ""},
-		{withOrg(""), "", "org cannot be empty"},
-		{withIsOpen(), "is:open", ""},
-		{withIsClosed(), "is:closed", ""},
-		{withIsNotDraft(), "draft:false", ""},
-		{withIsDraft(), "draft:true", ""},
-		{withReviewRequired(), "review:required", ""},
+		{WithAuthors("dan"), "author:dan", ""},
+		{WithAuthors(""), "", "author cannot be empty"},
+		{WithAuthors("dan", "rich"), "author:dan author:rich", ""},
+		{WithOrg("DanOrg"), "org:DanOrg", ""},
+		{WithOrg(""), "", "org cannot be empty"},
+		{WithIsOpen(), "is:open", ""},
+		{WithIsClosed(), "is:closed", ""},
+		{WithIsNotDraft(), "draft:false", ""},
+		{WithIsDraft(), "draft:true", ""},
+		{WithReviewRequired(), "review:required", ""},
 	}
 
 	for _, tc := range tcs {
@@ -43,31 +43,31 @@ func TestOptions(t *testing.T) {
 func TestGenerateFilterString(t *testing.T) {
 
 	tcs := []struct {
-		InputOptions []filterOpt
+		InputOptions []FilterOpt
 		Expected     string
 	}{
 		{
-			[]filterOpt{
-				withAuthors("dan"),
-				withOrg("danorg"),
-				withIsOpen(),
+			[]FilterOpt{
+				WithAuthors("dan"),
+				WithOrg("danorg"),
+				WithIsOpen(),
 			},
 			"author:dan org:danorg is:open",
 		},
 		{
-			[]filterOpt{
-				withOrg("testorg"),
-				withIsOpen(),
-				withReviewRequired(),
-				withIsNotDraft(),
-				withAuthors("cuotos", "another"),
+			[]FilterOpt{
+				WithOrg("testorg"),
+				WithIsOpen(),
+				WithReviewRequired(),
+				WithIsNotDraft(),
+				WithAuthors("cuotos", "another"),
 			},
 			"org:testorg is:open review:required draft:false author:cuotos author:another",
 		},
 	}
 
 	for _, tc := range tcs {
-		fs, err := getFilterString(tc.InputOptions...)
+		fs, err := GetFilterString(tc.InputOptions...)
 
 		if assert.NoError(t, err) {
 			assert.Equal(t, tc.Expected, fs)

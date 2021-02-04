@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/cuotos/outstanding-prs/filter"
 	"github.com/google/go-github/v33/github"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2"
@@ -16,10 +17,10 @@ import (
 
 var (
 	// Set default filters, like "review:required"
-	defaultFilters = []filterOpt{
-		withIsNotDraft(),
-		withIsOpen(),
-		withReviewRequired(),
+	defaultFilters = []filter.FilterOpt{
+		filter.WithIsNotDraft(),
+		filter.WithIsOpen(),
+		filter.WithReviewRequired(),
 	}
 )
 
@@ -161,8 +162,8 @@ func generateQueryString(org string, members []*github.User) (string, error) {
 		users = append(users, m.GetLogin())
 	}
 
-	filters := append(defaultFilters, withOrg(org), withAuthors(users...))
-	fs, err := getFilterString(filters...)
+	filters := append(defaultFilters, filter.WithOrg(org), filter.WithAuthors(users...))
+	fs, err := filter.GetFilterString(filters...)
 	if err != nil {
 		return "", err
 	}
