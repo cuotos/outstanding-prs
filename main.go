@@ -4,10 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"text/tabwriter"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/cuotos/outstanding-prs/filter"
 	"github.com/google/go-github/v33/github"
@@ -35,6 +36,11 @@ type config struct {
 	GithubTeam string `split_words:"true" required:"true"`
 }
 
+func init() {
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.WarnLevel)
+}
+
 func main() {
 	if err := run(); err != nil {
 		log.Fatal(err)
@@ -42,7 +48,6 @@ func main() {
 }
 
 func run() error {
-
 	v := flag.Bool("v", false, "prints version")
 	flag.Parse()
 	if *v {
@@ -68,7 +73,7 @@ func run() error {
 		return err
 	}
 
-	fmt.Printf("Looking for PRs with the following query:\n%s\n\n", queryString)
+	log.Debugf(`Looking for PRs with the following query: "%s"\n`, queryString)
 
 	prs, err := getPullRequests(client, queryString)
 	if err != nil {
