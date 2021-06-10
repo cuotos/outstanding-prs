@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/url"
@@ -29,8 +30,8 @@ var (
 )
 
 var (
-	version = ""
-	commit  = ""
+	version = "unset"
+	commit  = "unset"
 )
 
 type config struct {
@@ -61,6 +62,8 @@ func main() {
 
 func run() error {
 	v := flag.Bool("v", false, "prints version")
+	jsonOutput := flag.Bool("json", false, "print output in JSON format")
+
 	flag.Parse()
 	if *v {
 		fmt.Printf("%s-%s", version, commit)
@@ -92,7 +95,11 @@ func run() error {
 		return err
 	}
 
-	printOutput(prs, conf.GithubOrg, conf.GithubTeam)
+	if *jsonOutput {
+		printOutputJSON(prs)
+	} else {
+		printOutput(prs, conf.GithubOrg, conf.GithubTeam)
+	}
 
 	return nil
 }
@@ -188,6 +195,16 @@ func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User,
 	}
 
 	return allMembers, nil
+}
+
+func printOutputJSON(prs []PullRequest) error {
+	jsonBytes, err := json.Marshal(prs)
+	if err != nil {
+		return fmt.Errorf("unable to marshal PRs: %w")
+	}
+
+	fmt.Println(string(jsonBytes))
+	return nil
 }
 
 func printOutput(prs []PullRequest, org, team string) error {
