@@ -4,9 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -34,6 +37,15 @@ type config struct {
 	GithubPat  string `split_words:"true" required:"true" envconfig:"GITHUB_TOKEN"`
 	GithubOrg  string `split_words:"true" required:"true"`
 	GithubTeam string `split_words:"true" required:"true"`
+}
+
+type PullRequest struct {
+	CreatedAt time.Time
+	Title     string
+	Author    string
+	Head      string
+	Base      string
+	Link      string
 }
 
 func init() {
@@ -85,10 +97,31 @@ func run() error {
 	return nil
 }
 
-func getPullRequests(client *github.Client, queryString string) ([]*github.Issue, error) {
-	// PRs are "issues" in the world of Github
-	var allIssues []*github.Issue
+func getPullRequestFromIssue(client *github.Client, issue *github.Issue) (*github.PullRequest, error) {
 
+	u, _ := url.Parse(issue.GetPullRequestLinks().GetHTMLURL())
+	// /{org}/{repo}/pulls/{number}
+	// but we can get number from the issue itself.
+	re := regexp.MustCompile("/(.+?)/(.+?)/pull/.+")
+	match := re.FindStringSubmatch(u.Path)
+
+	org := match[1]
+	repo := match[2]
+	pr, _, err := client.PullRequests.Get(context.Background(), org, repo, issue.GetNumber())
+	if err != nil {
+		return nil, fmt.Errorf("unable to get PR from Issue: %w", err)
+	}
+	return pr, nil
+
+}
+
+func getPullRequests(client *github.Client, queryString string) ([]PullRequest, error) {
+	var allPrs []PullRequest
+
+	// Github PRs are "Issues" in regards to searching
+	// once you have the "issues", convert them to a list of "pulls"
+	// There doesnt seem to be an easy way to get a PR from its URL, so have to break the URL
+	// up into its fields and do a github.GetPR() call for each one.
 	opt := &github.SearchOptions{
 		Sort: "created-desc",
 		ListOptions: github.ListOptions{
@@ -97,12 +130,28 @@ func getPullRequests(client *github.Client, queryString string) ([]*github.Issue
 	}
 
 	for {
-		issues, resp, err := client.Search.Issues(context.Background(), queryString, opt)
+		foundIssues, resp, err := client.Search.Issues(context.Background(), queryString, opt)
 		if err != nil {
 			return nil, err
 		}
 
-		allIssues = append(allIssues, issues.Issues...)
+		for _, issue := range foundIssues.Issues {
+			ghPullRequest, err := getPullRequestFromIssue(client, issue)
+			if err != nil {
+				return nil, fmt.Errorf("unable to get github pr: %w", err)
+			}
+
+			pr := PullRequest{
+				CreatedAt: issue.GetCreatedAt(),
+				Title:     issue.GetTitle(),
+				Author:    issue.GetUser().GetLogin(),
+				Head:      ghPullRequest.GetHead().GetRef(),
+				Base:      ghPullRequest.GetBase().GetRef(),
+				Link:      issue.GetHTMLURL(),
+			}
+
+			allPrs = append(allPrs, pr)
+		}
 
 		if resp.NextPage == 0 {
 			break
@@ -111,7 +160,7 @@ func getPullRequests(client *github.Client, queryString string) ([]*github.Issue
 		opt.Page = resp.NextPage
 	}
 
-	return allIssues, nil
+	return allPrs, nil
 }
 
 func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User, error) {
@@ -141,16 +190,16 @@ func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User,
 	return allMembers, nil
 }
 
-func printOutput(prs []*github.Issue, org, team string) error {
+func printOutput(prs []PullRequest, org, team string) error {
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
 	// Add headers to the buffer
-	writer.Write([]byte("CreatedAt\tTitle\tAuthor\tLink\n"))
+	writer.Write([]byte("CreatedAt\tTitle\tAuthor\tHead\tBase\tLink\n"))
 
-	for _, i := range prs {
+	for _, pr := range prs {
 
-		formattedIssue := fmt.Sprintf("%s\t%s\t%s\t%s\t\n", i.GetCreatedAt().Format("2006-01-02"), i.GetTitle(), i.GetUser().GetLogin(), i.GetHTMLURL())
+		formattedIssue := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t\n", pr.CreatedAt.Format("2006-01-02"), pr.Title, pr.Author, pr.Head, pr.Base, pr.Link)
 
 		writer.Write([]byte(formattedIssue))
 	}
@@ -160,6 +209,8 @@ func printOutput(prs []*github.Issue, org, team string) error {
 
 func generateQueryString(org string, members []*github.User) (string, error) {
 	queryBuilder := strings.Builder{}
+
+	queryBuilder.WriteString("type:pr ")
 
 	var users []string
 
