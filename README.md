@@ -4,7 +4,7 @@ CLI to list outstanding PRs that are waiting for reviews raised by members of a 
 ## Install 
 
 ### Go
-`go get github.com/cuotos/outstanding-prs` will download and install the binary into your $GOBIN
+`go get github.com/cuotos/outstanding-prs` will download and install and build the lastest code the binary into your $GOBIN
 
 ### Docker
 see https://hub.docker.com/r/cuotos/outstanding-prs
