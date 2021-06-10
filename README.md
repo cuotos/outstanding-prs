@@ -10,6 +10,8 @@ CLI to list outstanding PRs that are waiting for reviews raised by members of a 
 see https://hub.docker.com/r/cuotos/outstanding-prs
 
 `docker run --rm -ti -e GITHUB_TOKEN=<Personal Access Token> -e PRS_GITHUB_ORG=<org name> -e PRS_GITHUB_TEAM=<team name> cuotos/outstanding-prs`
+If the env vars are already set in your shell, you can shared them with the container directly
+`docker run --rm -ti -e GITHUB_TOKEN -e PRS_GITHUB_ORG -e PRS_GITHUB_TEAM cuotos/outstanding-prs`
 
 ### Binaries
 
