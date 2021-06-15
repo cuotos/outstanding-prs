@@ -23,7 +23,7 @@ func TestOptions(t *testing.T) {
 		{WithIsClosed(), "is:closed", ""},
 		{WithIsNotDraft(), "draft:false", ""},
 		{WithIsDraft(), "draft:true", ""},
-		{WithReviewRequired(), "review:required", ""},
+		{WithReviewRequired(true), "review:required", ""},
 	}
 
 	for _, tc := range tcs {
@@ -58,7 +58,7 @@ func TestGenerateFilterString(t *testing.T) {
 			[]FilterOpt{
 				WithOrg("testorg"),
 				WithIsOpen(),
-				WithReviewRequired(),
+				WithReviewRequired(true),
 				WithIsNotDraft(),
 				WithAuthors("cuotos", "another"),
 			},

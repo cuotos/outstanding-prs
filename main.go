@@ -21,11 +21,10 @@ import (
 )
 
 var (
-	// Set default filters, like "review:required"
+	// Set default filters, like "draft:false"
 	defaultFilters = []filter.FilterOpt{
 		filter.WithIsNotDraft(),
 		filter.WithIsOpen(),
-		filter.WithReviewRequired(),
 	}
 )
 
@@ -63,6 +62,7 @@ func main() {
 func run() error {
 	v := flag.Bool("v", false, "prints version")
 	jsonOutput := flag.Bool("json", false, "print output in JSON format")
+	all := flag.Bool("all", false, "include PRs ready to merge")
 
 	flag.Parse()
 	if *v {
@@ -83,7 +83,7 @@ func run() error {
 		return err
 	}
 
-	queryString, err := generateQueryString(conf.GithubOrg, members)
+	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithReviewRequired(!*all)) //"view all" is "NOT requiring review", therefore have to negate the "all" flag
 	if err != nil {
 		return err
 	}
@@ -200,7 +200,7 @@ func getOrgTeamMembers(client *github.Client, org, team string) ([]*github.User,
 func printOutputJSON(prs []PullRequest) error {
 	jsonBytes, err := json.Marshal(prs)
 	if err != nil {
-		return fmt.Errorf("unable to marshal PRs: %w")
+		return fmt.Errorf("unable to marshal PRs: %w", err)
 	}
 
 	fmt.Println(string(jsonBytes))
@@ -212,7 +212,7 @@ func printOutput(prs []PullRequest, org, team string) error {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
 	// Add headers to the buffer
-	writer.Write([]byte("CreatedAt\tTitle\tAuthor\tHead\tBase\tLink\n"))
+	writer.Write([]byte("CreatedAt\tTitle\tAuthor\tHead (from)\tBase (into)\tLink\n"))
 
 	for _, pr := range prs {
 
@@ -224,7 +224,7 @@ func printOutput(prs []PullRequest, org, team string) error {
 	return writer.Flush()
 }
 
-func generateQueryString(org string, members []*github.User) (string, error) {
+func generateQueryString(org string, members []*github.User, additionalFilters ...filter.FilterOpt) (string, error) {
 	queryBuilder := strings.Builder{}
 
 	queryBuilder.WriteString("type:pr ")
@@ -236,6 +236,7 @@ func generateQueryString(org string, members []*github.User) (string, error) {
 	}
 
 	filters := append(defaultFilters, filter.WithOrg(org), filter.WithAuthors(users...))
+	filters = append(filters, additionalFilters...)
 	fs, err := filter.GetFilterString(filters...)
 	if err != nil {
 		return "", err

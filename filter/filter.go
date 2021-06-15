@@ -60,9 +60,13 @@ func WithIsClosed() FilterOpt {
 	}
 }
 
-func WithReviewRequired() FilterOpt {
+func WithReviewRequired(required bool) FilterOpt {
 	return func() (string, error) {
-		return "review:required", nil
+		if required {
+			return "review:required", nil
+		} else {
+			return "", nil
+		}
 	}
 }
 
