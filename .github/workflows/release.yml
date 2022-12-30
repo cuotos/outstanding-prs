@@ -1,0 +1,51 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: DockerHub login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.19.0"
+      - name: test
+        run: go test -v ./...
+      - name: goreleaser
+        uses: goreleaser/goreleaser-action@v3
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  homebrew:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: assert version
+        id: version
+        uses: nowsprinting/check-version-format-action@v3
+        with:
+          prefix: 'v'
+      - name: update homebrew tap
+        uses: mislav/bump-homebrew-formula-action@v2
+        with:
+          homebrew-tap: cuotos/homebrew-tap
+          download-url: https://github.com/cuotos/outstanding-prs/releases/download/${{ steps.version.outputs.full }}/outstanding-prs_${{ steps.version.outputs.full_without_prefix }}_Darwin_x86_64.tar.gz
+        env:
+          COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
