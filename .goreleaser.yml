@@ -14,6 +14,9 @@ builds:
       - darwin
     goarch:
       - amd64
+    ldflags:
+      -X main.commit={{ slice .Commit 0 8 }}
+      -X main.version={{ .Version }}
 dockers:
   - goos: linux
     goarch: amd64
