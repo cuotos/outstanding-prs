@@ -63,6 +63,7 @@ func run() error {
 	v := flag.Bool("v", false, "prints version")
 	jsonOutput := flag.Bool("json", false, "print output in JSON format")
 	all := flag.Bool("all", false, "include PRs ready to merge")
+	searchWholeTeam := flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
 
 	flag.Parse()
 	if *v {
@@ -78,9 +79,18 @@ func run() error {
 
 	client := getGithubClient(conf.GithubPat)
 
-	members, err := getOrgTeamMembers(client, conf.GithubOrg, conf.GithubTeam)
-	if err != nil {
-		return err
+	members := []*github.User{}
+	if *searchWholeTeam {
+		members, err = getOrgTeamMembers(client, conf.GithubOrg, conf.GithubTeam)
+		if err != nil {
+			return err
+		}
+	} else {
+		user, _, err := client.Users.Get(context.Background(), "")
+		if err != nil {
+			return err
+		}
+		members = append(members, user)
 	}
 
 	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithReviewRequired(!*all)) //"view all" is "NOT requiring review", therefore have to negate the "all" flag
