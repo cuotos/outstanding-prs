@@ -62,7 +62,8 @@ func main() {
 func run() error {
 	v := flag.Bool("v", false, "prints version")
 	jsonOutput := flag.Bool("json", false, "print output in JSON format")
-	all := flag.Bool("all", false, "include PRs ready to merge")
+	all := flag.Bool("all", false, "include PRs ready to merge. DEPRECATED: use -approved")
+	approved := flag.Bool("approved", false, "include PRs ready to merge")
 	searchWholeTeam := flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
 
 	flag.Parse()
@@ -93,7 +94,9 @@ func run() error {
 		members = append(members, user)
 	}
 
-	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithReviewRequired(!*all)) //"view all" is "NOT requiring review", therefore have to negate the "all" flag
+	incApproved := *all || *approved
+
+	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithIncludeApproved(incApproved))
 	if err != nil {
 		return err
 	}

@@ -24,6 +24,7 @@ func TestOptions(t *testing.T) {
 		{WithIsNotDraft(), "draft:false", ""},
 		{WithIsDraft(), "draft:true", ""},
 		{WithReviewRequired(true), "review:required", ""},
+		{WithIncludeApproved(false), "review:required", ""},
 	}
 
 	for _, tc := range tcs {

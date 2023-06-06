@@ -60,12 +60,24 @@ func WithIsClosed() FilterOpt {
 	}
 }
 
+// WithReviewRequired will add the "review:required" flag to the search string. It logically does the opposite of WithIncludeApproved
 func WithReviewRequired(required bool) FilterOpt {
 	return func() (string, error) {
 		if required {
 			return "review:required", nil
 		} else {
 			return "", nil
+		}
+	}
+}
+
+// WithIncludeApproved will NOT add the "review:required" flag to the search string. It logically does the opposite of WithReviewRequired
+func WithIncludeApproved(approved bool) FilterOpt {
+	return func() (string, error) {
+		if approved {
+			return "", nil
+		} else {
+			return "review:required", nil
 		}
 	}
 }
