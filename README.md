@@ -1,7 +1,16 @@
 # outstanding-prs
-CLI to list outstanding PRs that are waiting for reviews raised by members of a team
+CLI to list outstanding PRs that are waiting for reviews raised by the calling user, or members of their team
 
 ## Install 
+
+### Homebrew
+```
+  brew tap cuotos/tap
+  brew install outstanding-prs
+
+  # or upgrade with
+  brew upgrade outstanding-prs
+```
 
 ### Go
 `go get github.com/cuotos/outstanding-prs` will download and install and build the lastest code the binary into your $GOBIN
@@ -27,12 +36,19 @@ Export required vars, or set them in you bash_profile etc
 export GITHUB_TOKEN=<your github PAT token>
 export PRS_GITHUB_ORG=<github org> 
 export PRS_GITHUB_TEAM=<github team>
-
-$ outstanding-prs
 ```
+
+To view your own PRs that are waiting for reviews  
+`$ outstanding-prs`
+
+To view all PRs for your github team that are waiting for reviews  
+`$ outstanding-prs -team`
+
+To viw all PRs __INCLUDING__ those that have been approved but are still open  
+`$ outstanding-prs -approved`
 
 ## Building and Releasing
 
 Project uses __Go Releaser__
 
-After tagging the latest commit with a semver tag, `goreleaser release` is all that is required to build and upload the binaries to __Github__ and __Docker hub__.
+After tagging the latest commit with a semver tag, `goreleaser release` is all that is required to build and upload the binaries to __Github__, __Homebrew__, and __Docker hub__.
