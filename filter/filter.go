@@ -82,14 +82,12 @@ func WithIncludeApproved(approved bool) FilterOpt {
 	}
 }
 
-func WithIsDraft() FilterOpt {
+func WithIncludeDraft(draft bool) FilterOpt {
 	return func() (string, error) {
-		return "draft:true", nil
-	}
-}
-
-func WithIsNotDraft() FilterOpt {
-	return func() (string, error) {
-		return "draft:false", nil
+		if draft {
+			return "draft:true", nil
+		} else {
+			return "draft:false", nil
+		}
 	}
 }
