@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -23,7 +24,7 @@ import (
 var (
 	// Set default filters, like "draft:false"
 	defaultFilters = []filter.FilterOpt{
-		filter.WithIsNotDraft(),
+		filter.WithIncludeDraft(false),
 		filter.WithIsOpen(),
 	}
 )
@@ -46,6 +47,7 @@ type PullRequest struct {
 	Head      string
 	Base      string
 	Link      string
+	Draft     bool
 }
 
 func init() {
@@ -63,8 +65,9 @@ func run() error {
 	v := flag.Bool("v", false, "prints version")
 	jsonOutput := flag.Bool("json", false, "print output in JSON format")
 	all := flag.Bool("all", false, "include PRs ready to merge. DEPRECATED: use -approved")
-	approved := flag.Bool("approved", false, "include PRs ready to merge")
+	incApproved := flag.Bool("approved", false, "include PRs ready to merge")
 	searchWholeTeam := flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
+	incDrafts := flag.Bool("drafts", false, "include PRs that are in draft")
 
 	flag.Parse()
 	if *v {
@@ -94,14 +97,12 @@ func run() error {
 		members = append(members, user)
 	}
 
-	incApproved := *all || *approved
-
-	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithIncludeApproved(incApproved))
+	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithIncludeApproved(*all || *incApproved), filter.WithIncludeDraft(*incDrafts))
 	if err != nil {
 		return err
 	}
 
-	log.Debugf(`Looking for PRs with the following query: "%s"\n`, queryString)
+	log.Debugf(`Looking for PRs with the following query: "%s"`, queryString)
 
 	prs, err := getPullRequests(client, queryString)
 	if err != nil {
@@ -111,7 +112,7 @@ func run() error {
 	if *jsonOutput {
 		printOutputJSON(prs)
 	} else {
-		printOutput(prs, conf.GithubOrg, conf.GithubTeam)
+		printOutput(prs, conf.GithubOrg, conf.GithubTeam, *incDrafts)
 	}
 
 	return nil
@@ -168,6 +169,7 @@ func getPullRequests(client *github.Client, queryString string) ([]PullRequest, 
 				Head:      ghPullRequest.GetHead().GetRef(),
 				Base:      ghPullRequest.GetBase().GetRef(),
 				Link:      issue.GetHTMLURL(),
+				Draft:     ghPullRequest.GetDraft(),
 			}
 
 			allPrs = append(allPrs, pr)
@@ -220,18 +222,32 @@ func printOutputJSON(prs []PullRequest) error {
 	return nil
 }
 
-func printOutput(prs []PullRequest, org, team string) error {
+func printOutput(prs []PullRequest, org, team string, addDraftsCol bool) error {
 
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
-	// Add headers to the buffer
-	writer.Write([]byte("CreatedAt\tTitle\tAuthor\tHead (from)\tBase (into)\tLink\n"))
+	// Add headers to the buffer {
+	headerBuf := bytes.NewBufferString("CreatedAt\tTitle\tAuthor\tHead (from)\tBase (into)\tLink")
+
+	if addDraftsCol {
+		headerBuf.WriteString("\tDraft")
+	}
+
+	headerBuf.WriteString("\n")
+
+	writer.Write(headerBuf.Bytes())
 
 	for _, pr := range prs {
+		issueBuf := bytes.NewBufferString("")
+		issueBuf.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s", pr.CreatedAt.Format("2006-01-02"), pr.Title, pr.Author, pr.Head, pr.Base, pr.Link))
 
-		formattedIssue := fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t\n", pr.CreatedAt.Format("2006-01-02"), pr.Title, pr.Author, pr.Head, pr.Base, pr.Link)
+		if addDraftsCol {
+			issueBuf.WriteString(fmt.Sprintf("\t%t", pr.Draft))
+		}
 
-		writer.Write([]byte(formattedIssue))
+		issueBuf.WriteString("\n")
+
+		writer.Write(issueBuf.Bytes())
 	}
 
 	return writer.Flush()
