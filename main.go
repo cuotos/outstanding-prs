@@ -4,21 +4,30 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/cuotos/outstanding-prs/filter"
 	"github.com/google/go-github/v33/github"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2"
+
+	"github.com/cli/oauth"
+	"github.com/cli/oauth/device"
+)
+
+const (
+	clientId = "e95029f474d2dac53e6a"
 )
 
 var (
@@ -27,6 +36,7 @@ var (
 		filter.WithIncludeDraft(false),
 		filter.WithIsOpen(),
 	}
+	oauthScopes = []string{"repo"}
 )
 
 var (
@@ -35,7 +45,7 @@ var (
 )
 
 type config struct {
-	GithubPat  string `split_words:"true" required:"true" envconfig:"GITHUB_TOKEN"`
+	// GithubPat  string `split_words:"true" required:"true" envconfig:"GITHUB_TOKEN"`
 	GithubOrg  string `split_words:"true" required:"true"`
 	GithubTeam string `split_words:"true" required:"true"`
 }
@@ -52,7 +62,7 @@ type PullRequest struct {
 
 func init() {
 	log.SetOutput(os.Stdout)
-	log.SetLevel(log.WarnLevel)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
 func main() {
@@ -68,6 +78,7 @@ func run() error {
 	incApproved := flag.Bool("approved", false, "include PRs ready to merge")
 	searchWholeTeam := flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
 	incDrafts := flag.Bool("drafts", false, "include PRs that are in draft")
+	reauth := flag.Bool("reauth", false, "clears tokens and authorise against Github.com")
 
 	flag.Parse()
 	if *v {
@@ -81,7 +92,12 @@ func run() error {
 		return err
 	}
 
-	client := getGithubClient(conf.GithubPat)
+	accessToken, err := getGithubOAuthAccessToken(*reauth)
+	if err != nil {
+		return err
+	}
+
+	client := getGithubClient(accessToken)
 
 	members := []*github.User{}
 	if *searchWholeTeam {
@@ -102,7 +118,7 @@ func run() error {
 		return err
 	}
 
-	log.Debugf(`Looking for PRs with the following query: "%s"`, queryString)
+	log.Printf(`Looking for PRs with the following query: "%s"`, queryString)
 
 	prs, err := getPullRequests(client, queryString)
 	if err != nil {
@@ -285,4 +301,73 @@ func getGithubClient(accessToken string) *github.Client {
 	client := github.NewClient(tc)
 
 	return client
+}
+
+// getGithubOAuthAccessToken will retrieve the token from the users home dir, if its not found it will prompt to authenticate against github.com
+func getGithubOAuthAccessToken(reauth bool) (string, error) {
+
+	var tokenFilePathDir = filepath.Join(".", "config")
+	var tokenFilePath = filepath.Join(tokenFilePathDir, "token")
+
+	var token string
+
+	// check if token file exists
+	_, err := os.Stat(tokenFilePath)
+
+	// Token file exists
+	if err == nil && !reauth {
+		tokenFileBytes, err := ioutil.ReadFile(tokenFilePath)
+		if err != nil {
+			return token, err
+		}
+		err = json.Unmarshal(tokenFileBytes, &token)
+		if err != nil {
+			return token, err
+		}
+
+		return token, nil
+
+	}
+
+	if errors.Is(err, os.ErrNotExist) || reauth {
+		// Token file does not exists
+
+		log.Println("token file does not exist, begin auth flow")
+
+		flow := &oauth.Flow{
+			Host:     oauth.GitHubHost("https://github.com"),
+			ClientID: clientId,
+			Scopes:   oauthScopes,
+		}
+
+		fmt.Println(flow.Host.DeviceCodeURL)
+		ghToken, err := flow.DeviceFlow()
+		token = ghToken.Token
+		if errors.Is(err, device.ErrUnsupported) {
+			return token, errors.New("OAuth device flow is not supported, please contact the developer")
+		} else if err != nil {
+			return token, err
+		}
+
+		//write token to disk
+		err = os.MkdirAll(tokenFilePathDir, os.ModePerm)
+		if err != nil {
+			return token, err
+		}
+
+		tokenJsonBytes, err := json.Marshal(token)
+		if err != nil {
+			return token, err
+		}
+
+		err = os.WriteFile(tokenFilePath, tokenJsonBytes, 0644)
+		if err != nil {
+			return token, err
+		}
+
+		return token, nil
+
+	}
+
+	return token, errors.New("schrodingers config file, error occured checking if the file exists. We should never get here, please contact the developer")
 }
