@@ -16,13 +16,12 @@ CLI to list outstanding PRs that are waiting for reviews raised by the calling u
 `go get github.com/cuotos/outstanding-prs` will download and install and build the lastest code the binary into your $GOBIN
 
 ### Docker
-see https://hub.docker.com/r/cuotos/outstanding-prs
+> DEPRECATED, as the cli uses the local keychain storage, you cannot access this from inside docker
 
-`docker run --rm -ti -e GITHUB_TOKEN=<Personal Access Token> -e PRS_GITHUB_ORG=<org name> -e PRS_GITHUB_TEAM=<team name> cuotos/outstanding-prs`
-
-If the env vars are already set in your shell, you can shared them with the container directly
-
-`docker run --rm -ti -e GITHUB_TOKEN -e PRS_GITHUB_ORG -e PRS_GITHUB_TEAM cuotos/outstanding-prs`
+~~see https://hub.docker.com/r/cuotos/outstanding-prs  
+`docker run --rm -ti -e GITHUB_TOKEN=<Personal Access Token> -e PRS_GITHUB_ORG=<org name> -e PRS_GITHUB_TEAM=<team name> cuotos/outstanding-prs`  
+If the env vars are already set in your shell, you can shared them with the container directly  
+`docker run --rm -ti -e GITHUB_TOKEN -e PRS_GITHUB_ORG -e PRS_GITHUB_TEAM cuotos/outstanding-prs`~~
 
 ### Binaries
 
@@ -33,9 +32,11 @@ Can be found here [releases/latest](https://github.com/cuotos/outstanding-prs/re
 Export required vars, or set them in you bash_profile etc
 
 ```bash
-export GITHUB_TOKEN=<your github PAT token>
 export PRS_GITHUB_ORG=<github org> 
 export PRS_GITHUB_TEAM=<github team>
+
+# DEPRECATED - use oauth and secure local storage
+export GITHUB_TOKEN=<your github PAT token>
 ```
 
 To view your own PRs that are waiting for reviews  

@@ -7,11 +7,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"text/tabwriter"
@@ -20,6 +18,7 @@ import (
 	"github.com/cuotos/outstanding-prs/filter"
 	"github.com/google/go-github/v33/github"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
 
 	"github.com/cli/oauth"
@@ -303,36 +302,24 @@ func getGithubClient(accessToken string) *github.Client {
 	return client
 }
 
-// getGithubOAuthAccessToken will retrieve the token from the users home dir, if its not found it will prompt to authenticate against github.com
+// getGithubOAuthAccessToken will retrieve the token from the users keychain, if its not found it will prompt to authenticate against github.com
 func getGithubOAuthAccessToken(reauth bool) (string, error) {
-
-	var tokenFilePathDir = filepath.Join(".", "config")
-	var tokenFilePath = filepath.Join(tokenFilePathDir, "token")
 
 	var token string
 
 	// check if token file exists
-	_, err := os.Stat(tokenFilePath)
+	token, err := keyring.Get("outstanding-prs", "")
 
 	// Token file exists
 	if err == nil && !reauth {
-		tokenFileBytes, err := ioutil.ReadFile(tokenFilePath)
-		if err != nil {
-			return token, err
-		}
-		err = json.Unmarshal(tokenFileBytes, &token)
-		if err != nil {
-			return token, err
-		}
-
 		return token, nil
 
 	}
 
-	if errors.Is(err, os.ErrNotExist) || reauth {
+	if err == keyring.ErrNotFound || reauth {
 		// Token file does not exists
 
-		log.Println("token file does not exist, begin auth flow")
+		log.Println("token not found, begin auth flow")
 
 		flow := &oauth.Flow{
 			Host:     oauth.GitHubHost("https://github.com"),
@@ -343,24 +330,15 @@ func getGithubOAuthAccessToken(reauth bool) (string, error) {
 		fmt.Println(flow.Host.DeviceCodeURL)
 		ghToken, err := flow.DeviceFlow()
 		token = ghToken.Token
+
 		if errors.Is(err, device.ErrUnsupported) {
 			return token, errors.New("OAuth device flow is not supported, please contact the developer")
 		} else if err != nil {
 			return token, err
 		}
 
-		//write token to disk
-		err = os.MkdirAll(tokenFilePathDir, os.ModePerm)
-		if err != nil {
-			return token, err
-		}
-
-		tokenJsonBytes, err := json.Marshal(token)
-		if err != nil {
-			return token, err
-		}
-
-		err = os.WriteFile(tokenFilePath, tokenJsonBytes, 0644)
+		// store token
+		err = keyring.Set("outstanding-prs", "", token)
 		if err != nil {
 			return token, err
 		}
@@ -369,5 +347,5 @@ func getGithubOAuthAccessToken(reauth bool) (string, error) {
 
 	}
 
-	return token, errors.New("schrodingers config file, error occured checking if the file exists. We should never get here, please contact the developer")
+	return token, fmt.Errorf("failed to retrieve secret from keystore: %w", err)
 }
