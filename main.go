@@ -17,6 +17,7 @@ import (
 
 	"github.com/cuotos/outstanding-prs/filter"
 	"github.com/google/go-github/v33/github"
+	"github.com/hashicorp/logutils"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/zalando/go-keyring"
 	"golang.org/x/oauth2"
@@ -59,28 +60,47 @@ type PullRequest struct {
 	Draft     bool
 }
 
-func init() {
-	log.SetOutput(os.Stdout)
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+type flags struct {
+	version         *bool
+	jsonOutput      *bool
+	all             *bool
+	incApproved     *bool
+	searchWholeTeam *bool
+	incDrafts       *bool
+	reauth          *bool
+	logLevel        *string
 }
 
 func main() {
-	if err := run(); err != nil {
-		log.Fatal(err)
+	flags := flags{}
+	flags.version = flag.Bool("v", false, "prints version")
+	flags.jsonOutput = flag.Bool("json", false, "print output in JSON format")
+	flags.all = flag.Bool("all", false, "include PRs ready to merge. DEPRECATED: use -approved")
+	flags.incApproved = flag.Bool("approved", false, "include PRs ready to merge")
+	flags.searchWholeTeam = flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
+	flags.incDrafts = flag.Bool("drafts", false, "include PRs that are in draft")
+	flags.reauth = flag.Bool("reauth", false, "clears tokens and authorise against Github.com")
+	flags.logLevel = flag.String("log-level", "INFO", "set log level DEBUG, INFO, WARN, or ERROR")
+
+	flag.Parse()
+
+	log.SetOutput(os.Stdout)
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	logFilter := &logutils.LevelFilter{
+		Levels:   []logutils.LogLevel{"DEBUG", "INFO", "WARN", "ERROR"},
+		MinLevel: logutils.LogLevel(strings.ToUpper(*flags.logLevel)),
+		Writer:   os.Stderr,
+	}
+	log.SetOutput(logFilter)
+
+	if err := run(flags); err != nil {
+		log.Printf("[ERROR] %s", err)
 	}
 }
 
-func run() error {
-	v := flag.Bool("v", false, "prints version")
-	jsonOutput := flag.Bool("json", false, "print output in JSON format")
-	all := flag.Bool("all", false, "include PRs ready to merge. DEPRECATED: use -approved")
-	incApproved := flag.Bool("approved", false, "include PRs ready to merge")
-	searchWholeTeam := flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
-	incDrafts := flag.Bool("drafts", false, "include PRs that are in draft")
-	reauth := flag.Bool("reauth", false, "clears tokens and authorise against Github.com")
+func run(flags flags) error {
 
-	flag.Parse()
-	if *v {
+	if *flags.version {
 		fmt.Printf("%s-%s", version, commit)
 		os.Exit(0)
 	}
@@ -91,7 +111,7 @@ func run() error {
 		return err
 	}
 
-	accessToken, err := getGithubOAuthAccessToken(*reauth)
+	accessToken, err := getGithubOAuthAccessToken(*flags.reauth)
 	if err != nil {
 		return err
 	}
@@ -99,7 +119,7 @@ func run() error {
 	client := getGithubClient(accessToken)
 
 	members := []*github.User{}
-	if *searchWholeTeam {
+	if *flags.searchWholeTeam {
 		members, err = getOrgTeamMembers(client, conf.GithubOrg, conf.GithubTeam)
 		if err != nil {
 			return err
@@ -112,22 +132,22 @@ func run() error {
 		members = append(members, user)
 	}
 
-	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithIncludeApproved(*all || *incApproved), filter.WithIncludeDraft(*incDrafts))
+	queryString, err := generateQueryString(conf.GithubOrg, members, filter.WithIncludeApproved(*flags.all || *flags.incApproved), filter.WithIncludeDraft(*flags.incDrafts))
 	if err != nil {
 		return err
 	}
 
-	log.Printf(`Looking for PRs with the following query: "%s"`, queryString)
+	log.Printf(`[DEBUG] Looking for PRs with the following query: "%s"`, queryString)
 
 	prs, err := getPullRequests(client, queryString)
 	if err != nil {
 		return err
 	}
 
-	if *jsonOutput {
+	if *flags.jsonOutput {
 		printOutputJSON(prs)
 	} else {
-		printOutput(prs, conf.GithubOrg, conf.GithubTeam, *incDrafts)
+		printOutput(prs, conf.GithubOrg, conf.GithubTeam, *flags.incDrafts)
 	}
 
 	return nil
@@ -319,7 +339,7 @@ func getGithubOAuthAccessToken(reauth bool) (string, error) {
 	if err == keyring.ErrNotFound || reauth {
 		// Token file does not exists
 
-		log.Println("token not found, begin auth flow")
+		log.Println("[WARN] token not found, begin auth flow")
 
 		flow := &oauth.Flow{
 			Host:     oauth.GitHubHost("https://github.com"),
@@ -329,6 +349,9 @@ func getGithubOAuthAccessToken(reauth bool) (string, error) {
 
 		fmt.Println(flow.Host.DeviceCodeURL)
 		ghToken, err := flow.DeviceFlow()
+		if err != nil {
+			return token, err
+		}
 		token = ghToken.Token
 
 		if errors.Is(err, device.ErrUnsupported) {
