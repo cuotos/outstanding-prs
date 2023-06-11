@@ -1,5 +1,8 @@
 # outstanding-prs
-CLI to list outstanding PRs that are waiting for reviews raised by the calling user, or members of their team
+CLI to list outstanding PRs that are waiting for reviews raised by the calling user, or members of their team.
+
+Outstanding-prs uses OAuth to authenticate against Github, this token is then stored in your OS's local keychain.  
+If you are using it against an Org you are a member off (as defined by the `PRS_GITHUB_ORG` env var, you'll need to allow access to that org as part of the OAuth approval)
 
 ## Install 
 
