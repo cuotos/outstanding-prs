@@ -52,3 +52,6 @@ To viw all PRs __INCLUDING__ those that have been approved but are still open
 Project uses __Go Releaser__
 
 After tagging the latest commit with a semver tag, `goreleaser release` is all that is required to build and upload the binaries to __Github__, __Homebrew__, and __Docker hub__.
+
+
+.
