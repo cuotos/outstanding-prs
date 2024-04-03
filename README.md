@@ -1,6 +1,8 @@
 # outstanding-prs
 CLI to list outstanding PRs that are waiting for reviews raised by the calling user, or members of their team
 
+PRs from archived repositories are ignored.
+
 ## Install 
 
 ### Homebrew

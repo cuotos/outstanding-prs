@@ -256,7 +256,7 @@ func printOutput(prs []PullRequest, org, team string, addDraftsCol bool) error {
 func generateQueryString(org string, members []*github.User, additionalFilters ...filter.FilterOpt) (string, error) {
 	queryBuilder := strings.Builder{}
 
-	queryBuilder.WriteString("type:pr ")
+	queryBuilder.WriteString("type:pr archived:false ")
 
 	var users []string
 
