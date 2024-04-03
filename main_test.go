@@ -19,25 +19,25 @@ func TestGenerateQueryString(t *testing.T) {
 		{
 			"TestOrg",
 			[]string{},
-			[]string{"org:TestOrg", "is:open", "review:required", "draft:false", "type:pr"},
+			[]string{"org:TestOrg", "is:open", "review:required", "draft:false", "type:pr", "archived:false"},
 			false,
 		},
 		{
 			"SecondOrg",
 			[]string{"cuotos"},
-			[]string{"org:SecondOrg", "is:open", "review:required", "draft:false", "author:cuotos", "type:pr"},
+			[]string{"org:SecondOrg", "is:open", "review:required", "draft:false", "author:cuotos", "type:pr", "archived:false"},
 			false,
 		},
 		{
 			"AnotherOrg",
 			[]string{"cuotos", "danyo"},
-			[]string{"org:AnotherOrg", "is:open", "review:required", "draft:false", "type:pr", "author:cuotos", "author:danyo"},
+			[]string{"org:AnotherOrg", "is:open", "review:required", "draft:false", "type:pr", "author:cuotos", "author:danyo", "archived:false"},
 			false,
 		},
 		{
 			"TestOrg",
 			[]string{},
-			[]string{"org:TestOrg", "is:open", "draft:false", "type:pr"},
+			[]string{"org:TestOrg", "is:open", "draft:false", "type:pr", "archived:false"},
 			true,
 		},
 	}
