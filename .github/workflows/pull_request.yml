@@ -17,3 +17,12 @@ jobs:
           go-version: ">= 1.19.0"
       - name: test
         run: go test -v ./...
+      - name: build docker image
+        run: go build -o outstanding-prs . && docker build -t cuotos/outstanding-prs .
+      
+      - id: scan
+        name: Scan for vulnerabilities
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: cuotos/outstanding-prs
+          annotations: true
