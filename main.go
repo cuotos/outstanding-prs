@@ -41,14 +41,14 @@ type config struct {
 }
 
 type PullRequest struct {
-	CreatedAt time.Time
-	Title     string
-	Author    string
-	Head      string
-	Base      string
-	Link      string
-	Draft     bool
-	Mergeable bool
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	Title     string    `json:"title,omitempty"`
+	Author    string    `json:"author,omitempty"`
+	Head      string    `json:"head,omitempty"`
+	Base      string    `json:"base,omitempty"`
+	Link      string    `json:"link,omitempty"`
+	Draft     bool      `json:"draft,omitempty"`
+	Mergeable bool      `json:"mergeable,omitempty"`
 }
 
 func init() {
