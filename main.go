@@ -22,6 +22,15 @@ import (
 )
 
 var (
+	version = "unset"
+	commit  = "unset"
+)
+
+const (
+	envVarPrefix = "PRS"
+)
+
+var (
 	// Set default filters, like "draft:false"
 	defaultFilters = []filter.FilterOpt{
 		filter.WithIncludeDraft(false),
@@ -29,15 +38,10 @@ var (
 	}
 )
 
-var (
-	version = "unset"
-	commit  = "unset"
-)
-
 type config struct {
 	GithubPat  string `split_words:"true" required:"true" envconfig:"GITHUB_TOKEN"`
 	GithubOrg  string `split_words:"true" required:"true"`
-	GithubTeam string `split_words:"true" required:"true"`
+	GithubTeam string `split_words:"true" required:"false"`
 }
 
 type PullRequest struct {
@@ -67,7 +71,7 @@ func run() error {
 	jsonOutput := flag.Bool("json", false, "print output in JSON format")
 	all := flag.Bool("all", false, "include PRs ready to merge. DEPRECATED: use -approved")
 	incApproved := flag.Bool("approved", false, "include PRs ready to merge")
-	searchWholeTeam := flag.Bool("team", false, "should look up all members of the team. defaults to just calling user")
+	searchWholeTeam := flag.Bool("team", false, fmt.Sprintf("should look up all members of the team. defaults to just calling user. Requires the %s_GITHUB_TEAM env var to be set", envVarPrefix))
 	incDrafts := flag.Bool("drafts", false, "include PRs that are in draft")
 
 	flag.Parse()
@@ -77,7 +81,7 @@ func run() error {
 	}
 
 	conf := config{}
-	err := envconfig.Process("PRS", &conf)
+	err := envconfig.Process(envVarPrefix, &conf)
 	if err != nil {
 		return err
 	}
@@ -86,6 +90,11 @@ func run() error {
 
 	members := []*github.User{}
 	if *searchWholeTeam {
+		if conf.GithubTeam == "" {
+			log.Warnf("to view team PRs the environment variables %s_GITHUB_TEAM and %s_GITHUB_ORG must both be set", envVarPrefix, envVarPrefix)
+			return nil
+		}
+
 		members, err = getOrgTeamMembers(client, conf.GithubOrg, conf.GithubTeam)
 		if err != nil {
 			return err
