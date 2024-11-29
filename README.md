@@ -37,6 +37,8 @@ Export required vars, or set them in you bash_profile etc
 ```bash
 export GITHUB_TOKEN=<your github PAT token>
 export PRS_GITHUB_ORG=<github org> 
+
+# the following is only required if you want to view all PRS for your team
 export PRS_GITHUB_TEAM=<github team>
 ```
 
