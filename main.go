@@ -48,6 +48,7 @@ type PullRequest struct {
 	Base      string
 	Link      string
 	Draft     bool
+	Mergeable bool
 }
 
 func init() {
@@ -170,6 +171,7 @@ func getPullRequests(client *github.Client, queryString string) ([]PullRequest, 
 				Base:      ghPullRequest.GetBase().GetRef(),
 				Link:      issue.GetHTMLURL(),
 				Draft:     ghPullRequest.GetDraft(),
+				Mergeable: *ghPullRequest.Mergeable,
 			}
 
 			allPrs = append(allPrs, pr)
@@ -227,7 +229,7 @@ func printOutput(prs []PullRequest, org, team string, addDraftsCol bool) error {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
 
 	// Add headers to the buffer {
-	headerBuf := bytes.NewBufferString("CreatedAt\tTitle\tAuthor\tHead (from)\tBase (into)\tLink")
+	headerBuf := bytes.NewBufferString("CreatedAt\tTitle\tAuthor\tHead (from)\tBase (into)\tMergeable\tLink")
 
 	if addDraftsCol {
 		headerBuf.WriteString("\tDraft")
@@ -239,7 +241,7 @@ func printOutput(prs []PullRequest, org, team string, addDraftsCol bool) error {
 
 	for _, pr := range prs {
 		issueBuf := bytes.NewBufferString("")
-		issueBuf.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s", pr.CreatedAt.Format("2006-01-02"), pr.Title, pr.Author, pr.Head, pr.Base, pr.Link))
+		issueBuf.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%t\t%s", pr.CreatedAt.Format("2006-01-02"), pr.Title, pr.Author, pr.Head, pr.Base, pr.Mergeable, pr.Link))
 
 		if addDraftsCol {
 			issueBuf.WriteString(fmt.Sprintf("\t%t", pr.Draft))
