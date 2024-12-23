@@ -1,3 +1,4 @@
+version: 2
 project_name: outstanding-prs
 before:
   hooks:
@@ -34,6 +35,13 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
+brews:
+  - name: "{{ .ProjectName }}"
+    directory: Formula
+    repository:
+      owner: cuotos
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
 checksum:
   name_template: 'checksums.txt'
 snapshot:

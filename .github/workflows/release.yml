@@ -31,21 +31,5 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  homebrew:
-    runs-on: ubuntu-latest
-    needs: release
-    steps:
-      - name: assert version
-        id: version
-        uses: nowsprinting/check-version-format-action@v3
-        with:
-          prefix: 'v'
-      - name: update homebrew tap
-        uses: mislav/bump-homebrew-formula-action@v2
-        with:
-          homebrew-tap: cuotos/homebrew-tap
-          download-url: https://github.com/cuotos/outstanding-prs/releases/download/${{ steps.version.outputs.full }}/outstanding-prs_${{ steps.version.outputs.full_without_prefix }}_Darwin_x86_64.tar.gz
-        env:
-          COMMITTER_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
